@@ -1,0 +1,223 @@
+clc
+clear
+%% Initializing Variables (MODIFIED)
+HD = 30; %Number of Days
+
+n = 5; % average number of contacts per day per person
+
+N = 4000; %number of people in simulation
+a1 = 1;%min # days that someone is infected and not contagious
+a2 = 2;%max # days that someone is infected and not contagious
+b1 = 14;%min # days that someone is contagious and not immune
+b2 = 21;%max # days that someone is contagious and not immune
+c1 = 365; %min # days that someone is immune
+c2 = 500; %max # days that someone is immune
+DT = 0.50; %avg probability of contagious person infecting per contact
+nc = 5; %number initially contagious
+nh = N-nc; %number healthy not immune
+ni = 0; %number initially infected
+nhi = 0; %number initially healthy and immune
+ND = 75; %number of Days
+NSIM = 5; %number of simulations
+% END OF MODIFICATION
+
+
+for k = 1:100
+ p = zeros(N,n);
+    i = 1;
+    d = randi(N,1,2);
+        while d(1) == d(2)
+        d = randi(N,1,2);
+        end
+        p(d(1),min(find(p(d(1),:)==0)))=d(2);
+        p(d(2),min(find(p(d(2),:)==0))) = d(1);
+
+    while sum(sum(p)==0)~=0
+        i = i+1;
+        d = randi(N,1,2);
+        while d(1) == d(2)
+        d = randi(N,1,2);
+        end
+        p(d(1),min(find(p(d(1),:)==0)))=d(2);
+        p(d(2),min(find(p(d(2),:)==0))) = d(1);
+    end
+c(k) = i;
+end
+p = mean(c);
+
+%check
+if (ni+nc+nh+nhi) ~= N
+    disp('Incorrect Number of Individuals')
+    return
+end
+
+d = (1:ND)'; %Day Vector
+
+%Preallocating for speed
+NI = zeros(ND,NSIM);
+NC = zeros(ND,NSIM);
+NHI = zeros(ND,NSIM);
+NH = zeros(ND,NSIM);
+
+
+for j = 1:NSIM %Simulation Number
+%% Initializing Subpopulations and Assigning Individuals
+
+%healthy and not immune
+m1 = zeros(nh,1);
+im1 = zeros(nh,1);
+
+%infected
+m2 = -randi([a1,a2], ni, 1);
+im2 = zeros(ni, 1);
+
+%contagious
+m3 = randi([b1,b2], nc, 1);
+im3 = zeros(nc,1);
+
+%healthy and immune
+m4 = zeros(nhi,1);
+im4 = -randi([c1,c2], nhi, 1);
+
+%putting together
+M = [m1' m2' m3' m4']';
+IM = [im1' im2' im3' im4']';
+
+
+% Running Simulation
+    %% Sample Peroid Loop
+    for i = 1:ND %every day
+        
+        %% Randomly Expose Population
+        for k = 1:round(p) %number of people chosen = number of people in pop
+            dt = floor(rand+DT); %did the contact result in infection
+            if dt == 1
+                I = 1;
+                J = I;
+               while I == J
+                   I = floor(N*rand)+1; %choose 2 random people
+                   J = floor(N*rand)+1;
+               end
+               if M(I)>0 && M(J) == 0 && IM(J)>= 0 %if I is contagious and and J is not immune
+                   M(J) = -randi([a1,a2], 1, 1); %infect J
+               elseif M(J)>0 && M(I) == 0 && IM(I)>=0 %if J is contagious and I is not immune
+                   M(I) = -randi([a1,a2], 1, 1); %infect I
+               end
+            end
+        end
+
+        %% Record NI NC NHI NH
+        NI(i,j) = sum(M<0); %# infected
+        NC(i,j) = sum(M>0); %# contagious
+        NHI(i,j) = sum(IM<0 & M==0); %# healthy and immune
+        NH(i,j) = sum(IM>=0 & M==0); %# healthy and not immune
+
+        %% Update M and IM
+        for u = 1:N %For Each Person
+            if M(u) == 0 %if they are healthy (immune or not)
+                IM(u) = IM(u) + 1; %one less day immune no effect if not
+            elseif M(u)>0 %if they are contagious
+                M(u) = M(u) - 1; %decrease the number of contagious days left
+                if M(u) == 0 %if it was the last day
+                    IM(u) = -randi([c1,c2],1,1); %randomly assign number of immune days
+                end
+            elseif M(u)<0 %if they are infected
+                M(u) = M(u)+1; %decrease number of days until contagious
+                if M(u) == 0 %if last day
+                   M(u) = randi([b1,b2],1,1); %assign random number of contagious days
+                end
+            end
+        end
+        
+    end
+end
+%% Output Results 
+
+%Line Graph
+figure(1)
+hold on
+for p = 1:NSIM
+    subplot(2,2,1);
+    hold on
+    plot(d,NH(:,p));
+    subplot(2,2,2);
+    hold on
+    plot(d,NI(:,p));
+    subplot(2,2,3);
+    hold on
+    plot(d,NC(:,p));
+    subplot(2,2,4);
+    hold on
+    plot(d,NHI(:,p));
+end
+
+subplot(2,2,1)
+title(sprintf('Number Healthy Individuals Without Immunity (NH) at Each Day For %i Simulations',NSIM))
+xlim([1 ND])
+ylim([0 N])
+xlabel('Day')
+ylabel('Number of Individuals')
+
+subplot(2,2,2)
+title(sprintf('Number Infected (NI) at Each Day For %i Simulations',NSIM))
+xlim([1 ND])
+ylim([0 N])
+xlabel('Day')
+ylabel('Number of Individuals')
+
+subplot(2,2,3)
+title(sprintf('Number Contagious (NC) at Each Day For %i Simulations',NSIM))
+xlim([1 ND])
+ylim([0 N])
+xlabel('Day')
+ylabel('Number of Individuals')
+
+subplot(2,2,4)
+title(sprintf('Number Healthy Individuals With Immunity (NHI)at Each Day For %i Simulations',NSIM))
+xlim([1 ND])
+ylim([0 N])
+xlabel('Day')
+ylabel('Number of Individuals')
+
+%Histogram 
+
+figure(2)
+subplot(2,2,1)
+histogram(NH(HD,:),'BinWidth',10)
+title(sprintf('Number Healthy Individuals Without Immunity (NH) at Day %i',HD))
+xlim([1 N])
+ylim auto
+ylim(ylim+[0 round(NSIM/20)])
+xlabel('Number of Individuals')
+ylabel('Number of Simulations')
+
+subplot(2,2,2)
+histogram(NI(HD,:),'BinWidth',10)
+title(sprintf('Number Infected (NI) at Day %i',HD))
+xlim([1 N])
+ylim auto
+ylim(ylim+[0 round(NSIM/20)])
+xlabel('Number of Individuals')
+ylabel('Number of Simulations')
+
+subplot(2,2,3)
+histogram(NC(HD,:),'BinWidth',10)
+title(sprintf('Number Contagious (NC) at Day %i',HD))
+xlim([1 N])
+ylim auto
+ylim(ylim+[0 round(NSIM/20)])
+xlabel('Number of Individuals')
+ylabel('Number of Simulations')
+
+subplot(2,2,4)
+histogram(NHI(HD,:),'BinWidth',10)
+title(sprintf('Number Healthy Individuals With Immunity (NHI) at Day %i',HD))
+xlim([1 N])
+ylim auto
+ylim(ylim+[0 round(NSIM/20)])
+xlabel('Number of Individuals')
+ylabel('Number of Simulations')
+
+%Fraction Died Out by Histogram Day
+Fraction = sum(NH(HD,:)==1000)/NSIM
+
