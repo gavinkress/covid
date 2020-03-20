@@ -1,7 +1,7 @@
 clc
 clear
 %% Initializing Variables (MODIFIED)
-HD = 30; %Number of Days
+HD = 30; %Histogram Day
 
 n = 5; % average number of contacts per day per person
 
@@ -18,21 +18,21 @@ nh = N-nc; %number healthy not immune
 ni = 0; %number initially infected
 nhi = 0; %number initially healthy and immune
 ND = 75; %number of Days
-NSIM = 5; %number of simulations
+NSIM = 1; %number of simulations
 % END OF MODIFICATION
 
 
-for k = 1:100
- p = zeros(N,n);
+for k = 1:100 %Loop to determine how many contacts in population per day
+ p = zeros(N,n); %Each person is a row, each number in the row is a contact
     i = 1;
     d = randi(N,1,2);
-        while d(1) == d(2)
-        d = randi(N,1,2);
+        while d(1) == d(2) %to ensure both people are different
+        d = randi(N,1,2);%choose 2 random people to contact
         end
-        p(d(1),min(find(p(d(1),:)==0)))=d(2);
-        p(d(2),min(find(p(d(2),:)==0))) = d(1);
+        p(d(1),min(find(p(d(1),:)==0)))=d(2); %insert contact into person aray 
+        p(d(2),min(find(p(d(2),:)==0))) = d(1);%for both people
 
-    while sum(sum(p)==0)~=0
+    while sum(sum(p)==0)~=0 %until each person in the population has n contacts
         i = i+1;
         d = randi(N,1,2);
         while d(1) == d(2)
@@ -41,9 +41,9 @@ for k = 1:100
         p(d(1),min(find(p(d(1),:)==0)))=d(2);
         p(d(2),min(find(p(d(2),:)==0))) = d(1);
     end
-c(k) = i;
+c(k) = i;%record total number of contacts in popultion that day
 end
-p = mean(c);
+p = mean(c); %use the average of 100 contact simulations
 
 %check
 if (ni+nc+nh+nhi) ~= N
@@ -89,7 +89,7 @@ IM = [im1' im2' im3' im4']';
     for i = 1:ND %every day
         
         %% Randomly Expose Population
-        for k = 1:round(p) %number of people chosen = number of people in pop
+        for k = 1:round(p) %number of contacts to occur per day
             dt = floor(rand+DT); %did the contact result in infection
             if dt == 1
                 I = 1;
@@ -220,4 +220,3 @@ ylabel('Number of Simulations')
 
 %Fraction Died Out by Histogram Day
 Fraction = sum(NH(HD,:)==1000)/NSIM
-
